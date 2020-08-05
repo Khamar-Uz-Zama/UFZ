@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Aug  3 12:40:32 2020
-
-@author: Khamar Uz Zama
-"""
 import geopandas as gpd
 import folium
 import pandas as pd
@@ -12,20 +6,27 @@ import numpy as np
 from os import listdir
 from os.path import isfile, join
 from shapely.geometry import Polygon
-from shapely.geometry.multipolygon import MultiPolygon
+
+import matplotlib.pyplot as plt
+import os
+
 
 root = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//"
 
-#basin_file_names = ["01010000.BDY", "01010500.BDY","01011000.BDY"]
 
 def get_all_basin_coords():
+    """Retrieve basin coordinates and their names"""
     basins_dir = "Basin_Boundaries//"
-    #basin_file_names = [f for f in listdir(join(root, basins_dir)) if isfile(join(root, basins_dir, f))]
-    basin_file_names = ["01010000.BDY", "01010500.BDY","01011000.BDY"]
-
-    m = folium.Map(zoom_start=10, tiles='cartodbpositron')
+    mopex_dir = "MOPEX//"
     
+    #basin_file_names = [f for f in listdir(join(root, basins_dir)) if isfile(join(root, basins_dir, f))]
+    # below basins are present in mopex dataset
+    basin_file_names = [f.replace('.txt', '.BDY') for f in listdir(join(root, mopex_dir)) if isfile(join(root, mopex_dir, f))]
+    basin_file_names = basin_file_names[:-2]
+    #basin_file_names = ["01048000.BDY", "01055500.BDY","01060000.BDY", "01064500.BDY", "01076500.BDY"]
+        
     all_basin_geoms = []
+    print("Reading basins coordinates")
     for file_name in basin_file_names[:]:
         lat_point_list = []
         lon_point_list = []
@@ -36,14 +37,9 @@ def get_all_basin_coords():
         polygon_geom = Polygon(zip(lon_point_list, lat_point_list))
         all_basin_geoms.append(polygon_geom)
         
-    #    crs = {'init': 'epsg:4326'}
-    #    polygon = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[polygon_geom])       
-    #
-    #    folium.GeoJson(polygon).add_to(m)
-    #    folium.LatLngPopup().add_to(m)
-    #m
-    
-    return all_basin_geoms
+    print("Completed reading basins coordinates")
+     
+    return all_basin_geoms, basin_file_names
 
 def read_prism_hdr(hdr_path):
     """Read an ESRI BIL HDR file"""
@@ -61,10 +57,14 @@ def read_prism_bil(bil_path):
     prism_array[prism_array == float(hdr_dict['NODATA'])] = np.nan
     return prism_array
 
-def get_ppt_data():
-    prism_dir = "PRISM_ppt_stable_4kmM3_198101_202001_bil//"
-    prism_file_path = "PRISM_ppt_stable_4kmM3_198107_bil.bil"
+def get_monthly_prism_ppt_data(year,month):
+    """ Get true precipitation data for given mmYY"""
     
+    prism_dir = "PRISM_ppt_stable_4kmM3_198101_202001_bil//"
+    if(month<10):
+        prism_file_path = "PRISM_ppt_stable_4kmM3_"+str(year)+"0"+str(month)+"_bil.bil"
+    else:
+        prism_file_path = "PRISM_ppt_stable_4kmM3_"+str(year)+str(month)+"_bil.bil"    
     ppt_data = read_prism_bil(join(root, prism_dir, prism_file_path))
     
     hdr_dict = read_prism_hdr(join(root, prism_dir, prism_file_path).replace('.bil', '.hdr'))
@@ -78,13 +78,13 @@ def get_ppt_data():
     
     p1 = (hdr_dict["ULXMAP"] - (hdr_dict['XDIM']/2), 
           hdr_dict["ULYMAP"] + (hdr_dict['XDIM']/2))
-    	  
+
     p2 = (hdr_dict["ULXMAP"] + hdr_dict['NCOLS']*hdr_dict['XDIM'],
           hdr_dict["ULYMAP"] + (hdr_dict['XDIM']/2))
-    	  
+
     p3 = (hdr_dict["ULXMAP"] + hdr_dict['NCOLS']*hdr_dict['XDIM'],
           hdr_dict["ULYMAP"] - hdr_dict['NROWS']*hdr_dict['YDIM'])
-    	  
+
     p4 = (hdr_dict["ULXMAP"] - (hdr_dict['XDIM']/2),
           hdr_dict["ULYMAP"] - hdr_dict['NROWS']*hdr_dict['YDIM'])
     
@@ -96,7 +96,7 @@ def get_ppt_data():
     return ppt_bounds, ppt_data, hdr_dict
 
 def convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict):
-        
+    """ Convert precipitation data to Geo DataFrame """
     Xmin, Ymin, Xmax, Ymax = ppt_bounds.bounds
     
     Xlength = int((Xmax - Xmin)/hdr_dict['XDIM'])
@@ -112,15 +112,140 @@ def convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict):
          'Latitude': yc,
          'Longitude': xc})
         
-    gdf = gpd.GeoDataFrame(
-        df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
+    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
+
+    return gdf
+
+def plot_basins(basin_geoms):
+    """ Plot the given basins """
+    crs = {'init': 'epsg:4326'}
+    m = folium.Map(zoom_start=10, tiles='cartodbpositron')
+
+    for basin_geom in basin_geoms:
+        polygon = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[basin_geom])       
+
+        folium.GeoJson(polygon).add_to(m)
+        folium.LatLngPopup().add_to(m)
+        
+    return m
+
+def convert_basin_geom_to_GDF(basin):
+    """ Convert basin geoms to Geo DataFrames """
     
+    longs, lats = basin.exterior.coords.xy
+    df = pd.DataFrame({'Latitude': longs,
+                       'Longitude': lats})
+        
+    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
     
     return gdf
 
-all_basin_geoms = get_all_basin_coords()
-ppt_bounds, ppt_data, hdr_dict = get_ppt_data()
-ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)
 
-clipped = gpd.clip(gdf=ppt_gdf, mask=all_basin_geoms[2])
+def get_intersected_basins(all_basin_geoms, basin_file_names , month, year):
+    """ Return the precipitation data for basins that intersect with prism grid """
+    ppt_bounds, ppt_data, hdr_dict = get_monthly_prism_ppt_data(year=year, month=month)
+    ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)
     
+#    all_basin_gdf = []
+#    for basin in all_basin_geoms:
+#        basin_gdf = convert_basin_geom_to_GDF(basin)
+#        all_basin_gdf.append(basin_gdf)    
+#    
+    #plot_basins(all_basin_geoms)
+    #fig, ax = plt.subplots(1, 1)
+    #ppt_gdf.plot(column="Precipitation", ax=ax, legend=True)
+
+    intersected_basins = {}
+    #clipped = gpd.clip(gdf=ppt_gdf, mask=all_basin_geoms[0])
+    print("Creating Spatial RTree Index for month:", month)
+    spatial_index = ppt_gdf.sindex
+    print("Creating basin intersections")
+    for count, basin_geom in enumerate(all_basin_geoms):
+        #print("Basin Index =>", count)
+        #print("basin_file_name:", basin_file_names[count])    
+        possible_matches_index = list(spatial_index.intersection(basin_geom.bounds))
+        possible_matches = ppt_gdf.iloc[possible_matches_index]
+        precise_matches = possible_matches[possible_matches.intersects(basin_geom)]
+        
+        intersected_basins[basin_file_names[count]] = precise_matches
+
+    return intersected_basins
+    
+
+def get_mopex_monthly_average():
+    """ Get average precipitation data for all the basins in mopex  for all the possible years"""
+    mopex_dir = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//MOPEX"
+    basin_file_names = [f for f in listdir(join(root, mopex_dir)) if isfile(join(root, mopex_dir, f))]
+    basin_file_names = basin_file_names[:-2]
+
+    mopex_data = {}
+    print("Reading mopex data")
+    for count, file_name in enumerate(basin_file_names):
+        mopex_df = pd.read_csv(os.path.join(mopex_dir, file_name))
+        mopex_df = mopex_df[["precipitation", "month", "year", "date"]]
+        mopex_df['date'] = pd.to_datetime(mopex_df['date'])
+    
+        mopex_df.set_index('date', inplace=True)
+        mopex_df.index = pd.to_datetime(mopex_df.index)
+        monthly_average = mopex_df.resample('1M').mean()
+        mopex_data[file_name] = monthly_average
+        
+    print("Completed reading mopex data")
+    return mopex_data
+    
+
+def remove_basin_nulls(basins_with_ppt):
+    # Remove the basins that have null values - check for all
+
+    notNulls = {}
+    for name, data_df in basins_with_ppt.items():
+        if(not data_df.isnull().values.any()):
+            notNulls[name] = data_df
+    
+    return notNulls
+
+def zip_calc_and_true(mopex_ppt_data, basins, month, year): 
+    trueVSCalc = pd.DataFrame(columns=['Name','Calculated', 'Actual', "Year", "Month"])
+    
+    for file_name, calculated_ppt in basins.items():
+        temp = {}
+        temp["Name"] = file_name.replace(".BDY","")
+        temp["Calculated"] = calculated_ppt["Precipitation"].mean()
+    
+        ppt_file_name = file_name.replace(".BDY",".txt")
+        true_ppt = mopex_ppt_data[ppt_file_name]
+        
+        true_ppt = true_ppt[(true_ppt.index.month == month)]
+        true_ppt = true_ppt[(true_ppt.index.year == year)]
+        if(len(true_ppt) > 0):
+            true_ppt = true_ppt["precipitation"][0]
+        else:
+            true_ppt = np.nan
+        temp["Year"] = year
+        temp["Month"] = month
+        temp["Actual"] = true_ppt
+        trueVSCalc = trueVSCalc.append(temp, ignore_index=True)
+        
+    return trueVSCalc
+
+
+mopex_ppt_data = get_mopex_monthly_average()
+all_basin_geoms, basin_file_names = get_all_basin_coords()
+
+comparison = pd.DataFrame(columns=['Name','Calculated', 'Actual', "Year", "Month"])
+years = [1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994]
+
+import time
+for y in years:
+    Year_start = time.time()
+    print("Processing Year =>", y)
+    for m in range(1,13):
+        month_start = time.time()
+        print("Processing Month =>", m)
+        basins_with_ppt = get_intersected_basins(all_basin_geoms, basin_file_names , month = m, year = y)
+        basins = remove_basin_nulls(basins_with_ppt)
+        trueVSCalc = zip_calc_and_true(mopex_ppt_data, basins, month=m, year=y)
+        comparison = comparison.append(trueVSCalc)
+        print("Time taken for  month:", month_start - time.time())
+        
+    print("Time taken for  year:", Year_start - time.time())
