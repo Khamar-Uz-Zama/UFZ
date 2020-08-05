@@ -15,9 +15,13 @@ root = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//"
 
 def get_all_basin_coords():
     basins_dir = "Basin_Boundaries//"
+    mopex_dir = "MOPEX//"
+    
     #basin_file_names = [f for f in listdir(join(root, basins_dir)) if isfile(join(root, basins_dir, f))]
     # below basins are present in mopex dataset
-    basin_file_names = ["01048000.BDY", "01055500.BDY","01060000.BDY"]
+    basin_file_names = [f.replace('.txt', '.BDY') for f in listdir(join(root, mopex_dir)) if isfile(join(root, mopex_dir, f))]
+    basin_file_names = basin_file_names[:-2]
+    #basin_file_names = ["01048000.BDY", "01055500.BDY","01060000.BDY", "01064500.BDY", "01076500.BDY"]
         
     all_basin_geoms = []
     for file_name in basin_file_names[:]:
@@ -30,7 +34,7 @@ def get_all_basin_coords():
         polygon_geom = Polygon(zip(lon_point_list, lat_point_list))
         all_basin_geoms.append(polygon_geom)
          
-    return all_basin_geoms
+    return all_basin_geoms, basin_file_names
 
  
 def read_prism_hdr(hdr_path):
@@ -129,29 +133,46 @@ def convert_basin_geom_to_GDF(basin):
 
 
 def main():
-    all_basin_geoms = get_all_basin_coords()
+    all_basin_geoms, basin_file_names = get_all_basin_coords()
     ppt_bounds, ppt_data, hdr_dict = get_ppt_data(year=1987, month=8)
     
     ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)
     all_basin_gdf = []
     for basin in all_basin_geoms:
-        basin_gdf = convert_basin_geom_to_GDF(all_basin_geoms[0])
+        basin_gdf = convert_basin_geom_to_GDF(basin)
         all_basin_gdf.append(basin_gdf)    
     
-    plot_basins(all_basin_geoms)
-    
-    
-    fig, ax = plt.subplots(1, 1)
-    ppt_gdf.plot(column="Precipitation", ax=ax, legend=True)
+    #plot_basins(all_basin_geoms)
+    #fig, ax = plt.subplots(1, 1)
+    #ppt_gdf.plot(column="Precipitation", ax=ax, legend=True)
 
-
+    intersected = []
     #clipped = gpd.clip(gdf=ppt_gdf, mask=all_basin_geoms[0])
-    z=gpd.overlay(basin_gdf, ppt_gdf, how='intersection')
-    if(z.shape[0]> 0):
-        print("found")
+    spatial_index = ppt_gdf.sindex
+    
+    for count, basin_geom in enumerate(all_basin_geoms):
+        print("Index", count)
+        print("basin_file_name:", basin_file_names[count])    
+        possible_matches_index = list(spatial_index.intersection(basin_geom.bounds))
+        possible_matches = ppt_gdf.iloc[possible_matches_index]
+        precise_matches = possible_matches[possible_matches.intersects(basin_geom)]
+        
+        intersected.append(precise_matches)
+#    for count, basin_gdf in enumerate(all_basin_gdf):
+#        print("Index", count)
+#        print("basin_file_name:", basin_file_names[count])
+#        z=gpd.overlay(basin_gdf, ppt_gdf, how='intersection')
+#        if(z.shape[0]> 0):
+#            intersected.append(z)
+#            print("found")
+#            
+    return intersected
+    
+inter = main()
 
 #ppt_gdf.intersects(basin_gdf)
 #x=basin_gdf.intersects(ppt_gdf)
 #
 #x=basin_gdf.intersection(ppt_gdf)
+
 
