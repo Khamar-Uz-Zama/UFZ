@@ -12,14 +12,17 @@ import numpy as np
 from os import listdir
 from os.path import isfile, join
 from shapely.geometry import Polygon
+from shapely.geometry.multipolygon import MultiPolygon
 
 root = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//"
-basins_dir = "Basin_Boundaries//"
-basin_file_names = [f for f in listdir(join(root, basins_dir)) if isfile(join(root, basins_dir, f))]
 
 #basin_file_names = ["01010000.BDY", "01010500.BDY","01011000.BDY"]
 
 def get_all_basin_coords():
+    basins_dir = "Basin_Boundaries//"
+    #basin_file_names = [f for f in listdir(join(root, basins_dir)) if isfile(join(root, basins_dir, f))]
+    basin_file_names = ["01010000.BDY", "01010500.BDY","01011000.BDY"]
+
     m = folium.Map(zoom_start=10, tiles='cartodbpositron')
     
     all_basin_geoms = []
@@ -60,7 +63,7 @@ def read_prism_bil(bil_path):
 
 def get_ppt_data():
     prism_dir = "PRISM_ppt_stable_4kmM3_198101_202001_bil//"
-    prism_file_path = "PRISM_ppt_stable_4kmM3_198103_bil.bil"
+    prism_file_path = "PRISM_ppt_stable_4kmM3_198107_bil.bil"
     
     ppt_data = read_prism_bil(join(root, prism_dir, prism_file_path))
     
@@ -115,6 +118,9 @@ def convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict):
     
     return gdf
 
+all_basin_geoms = get_all_basin_coords()
 ppt_bounds, ppt_data, hdr_dict = get_ppt_data()
-ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)    
+ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)
+
+clipped = gpd.clip(gdf=ppt_gdf, mask=all_basin_geoms[2])
     
