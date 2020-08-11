@@ -10,9 +10,8 @@ from shapely.geometry import Polygon
 import matplotlib.pyplot as plt
 import os
 
-
 root = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//"
-
+gIndex = 0
 
 def get_all_basin_coords():
     """Retrieve basin coordinates and their names"""
@@ -23,8 +22,9 @@ def get_all_basin_coords():
     # below basins are present in mopex dataset
     basin_file_names = [f.replace('.txt', '.BDY') for f in listdir(join(root, mopex_dir)) if isfile(join(root, mopex_dir, f))]
     basin_file_names = basin_file_names[:-2]
-    #basin_file_names = ["01048000.BDY", "01055500.BDY","01060000.BDY", "01064500.BDY", "01076500.BDY"]
-        
+    
+    #basin_file_names = ["1595000.BDY","1606500.BDY","1608500.BDY","1610000.BDY","1611500.BDY"]
+
     all_basin_geoms = []
     print("Reading basins coordinates")
     for file_name in basin_file_names[:]:
@@ -38,8 +38,8 @@ def get_all_basin_coords():
         all_basin_geoms.append(polygon_geom)
         
     print("Completed reading basins coordinates")
-     
-    return all_basin_geoms, basin_file_names
+
+    return dict(zip(basin_file_names, all_basin_geoms))
 
 def read_prism_hdr(hdr_path):
     """Read an ESRI BIL HDR file"""
@@ -141,8 +141,9 @@ def convert_basin_geom_to_GDF(basin):
     return gdf
 
 
-def get_intersected_basins(all_basin_geoms, basin_file_names , month, year):
+def get_intersected_basins(all_basin_geoms , month, year):
     """ Return the precipitation data for basins that intersect with prism grid """
+    global gIndex
     ppt_bounds, ppt_data, hdr_dict = get_monthly_prism_ppt_data(year=year, month=month)
     ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)
     
@@ -156,18 +157,24 @@ def get_intersected_basins(all_basin_geoms, basin_file_names , month, year):
     #ppt_gdf.plot(column="Precipitation", ax=ax, legend=True)
 
     intersected_basins = {}
-    #clipped = gpd.clip(gdf=ppt_gdf, mask=all_basin_geoms[0])
     print("Creating Spatial RTree Index for month:", month)
-    spatial_index = ppt_gdf.sindex
+    
+    # Create a copy of a global index to reduce time.
+    # Check if it works correctly.
+    
+    if(gIndex == 0):
+        spatial_index = ppt_gdf.sindex
+        gIndex = spatial_index
+    else:
+        spatial_index = gIndex
+        
     print("Creating basin intersections")
-    for count, basin_geom in enumerate(all_basin_geoms):
-        #print("Basin Index =>", count)
-        #print("basin_file_name:", basin_file_names[count])    
+    for basin_file_name, basin_geom in all_basin_geoms.items():
         possible_matches_index = list(spatial_index.intersection(basin_geom.bounds))
         possible_matches = ppt_gdf.iloc[possible_matches_index]
         precise_matches = possible_matches[possible_matches.intersects(basin_geom)]
         
-        intersected_basins[basin_file_names[count]] = precise_matches
+        intersected_basins[basin_file_name] = precise_matches
 
     return intersected_basins
     
@@ -175,12 +182,13 @@ def get_intersected_basins(all_basin_geoms, basin_file_names , month, year):
 def get_mopex_monthly_average():
     """ Get average precipitation data for all the basins in mopex  for all the possible years"""
     mopex_dir = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//MOPEX"
-    basin_file_names = [f for f in listdir(join(root, mopex_dir)) if isfile(join(root, mopex_dir, f))]
-    basin_file_names = basin_file_names[:-2]
+    mopex_file_names = [f for f in listdir(join(root, mopex_dir)) if isfile(join(root, mopex_dir, f))]
+    # Remove last two files as they contain summaries
+    mopex_file_names = mopex_file_names[:-2]
 
     mopex_data = {}
     print("Reading mopex data")
-    for count, file_name in enumerate(basin_file_names):
+    for count, file_name in enumerate(mopex_file_names):
         mopex_df = pd.read_csv(os.path.join(mopex_dir, file_name))
         mopex_df = mopex_df[["precipitation", "month", "year", "date"]]
         mopex_df['date'] = pd.to_datetime(mopex_df['date'])
@@ -228,24 +236,70 @@ def zip_calc_and_true(mopex_ppt_data, basins, month, year):
         
     return trueVSCalc
 
+def filter_basins_by_mopex(mopex_ppt_data, all_basin_geoms):
+    """ Remove basins which are not in mopex dataset """
+    dict_you_want = {your_key.replace(".txt",".BDY"): all_basin_geoms[your_key.replace(".txt",".BDY")] for your_key in mopex_ppt_data.keys() }
+    return dict_you_want
+        
+def calculate_for_years():
+    comparison = pd.DataFrame(columns=['Name','Calculated', 'Actual', "Year", "Month"])
+    years = [1987]
+    import time
+    for y in years:
+        Year_start = time.time()
+        print("Processing Year =>", y)
+        for m in range(1,13):
+            month_start = time.time()
+            print("Processing Month =>", m)
+            basins_with_ppt = get_intersected_basins(all_basin_geoms, month = m, year = y)
+            basins = remove_basin_nulls(basins_with_ppt)
+            trueVSCalc = zip_calc_and_true(mopex_ppt_data, basins, month=m, year=y)
+            comparison = comparison.append(trueVSCalc)
+            print("Time taken for  month:", month_start - time.time())
+            
+        print("Time taken for  year:", Year_start - time.time())
+    
+
+    from tkinter import filedialog
+    
+    export_file_path = filedialog.asksaveasfilename(defaultextension='.csv')
+    comparison.to_csv (export_file_path, index = False, header=True)
+    
+    return comparison
 
 mopex_ppt_data = get_mopex_monthly_average()
-all_basin_geoms, basin_file_names = get_all_basin_coords()
+all_basin_geoms = get_all_basin_coords()
+all_basin_geoms = filter_basins_by_mopex(mopex_ppt_data, all_basin_geoms)
+calculate_for_years()
 
-comparison = pd.DataFrame(columns=['Name','Calculated', 'Actual', "Year", "Month"])
-years = [1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994]
-
-import time
-for y in years:
-    Year_start = time.time()
-    print("Processing Year =>", y)
-    for m in range(1,13):
-        month_start = time.time()
-        print("Processing Month =>", m)
-        basins_with_ppt = get_intersected_basins(all_basin_geoms, basin_file_names , month = m, year = y)
-        basins = remove_basin_nulls(basins_with_ppt)
-        trueVSCalc = zip_calc_and_true(mopex_ppt_data, basins, month=m, year=y)
-        comparison = comparison.append(trueVSCalc)
-        print("Time taken for  month:", month_start - time.time())
+def visualize_prism_data_by_grid_for_given_basin(target_basin_geom, year, month):
+    global gIndex
+    
+    ppt_bounds, ppt_data, hdr_dict = get_monthly_prism_ppt_data(year=year, month=month)
+    ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)
+    
+    intersected_basins = {}
+    print("Creating Spatial RTree Index for month:", month)
+    
+    # Create a copy of a global index to reduce time.
+    # Check if it works correctly.
+    
+    if(gIndex == 0):
+        spatial_index = ppt_gdf.sindex
+        gIndex = spatial_index
+    else:
+        spatial_index = gIndex
         
-    print("Time taken for  year:", Year_start - time.time())
+    print("Creating basin intersections")
+    for basin_file_name, basin_geom in all_basin_geoms.items():
+        possible_matches_index = list(spatial_index.intersection(basin_geom.bounds))
+        possible_matches = ppt_gdf.iloc[possible_matches_index]
+        precise_matches = possible_matches[possible_matches.intersects(basin_geom)]
+        
+        intersected_basins[basin_file_name] = precise_matches    
+    
+
+#plot_basins(all_basin_geoms)
+
+
+
