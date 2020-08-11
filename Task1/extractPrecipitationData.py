@@ -248,7 +248,7 @@ def calculate_for_years():
     for y in years:
         Year_start = time.time()
         print("Processing Year =>", y)
-        for m in range(1,13):
+        for m in range(1,2):
             month_start = time.time()
             print("Processing Month =>", m)
             basins_with_ppt = get_intersected_basins(all_basin_geoms, month = m, year = y)
@@ -265,41 +265,42 @@ def calculate_for_years():
     export_file_path = filedialog.asksaveasfilename(defaultextension='.csv')
     comparison.to_csv (export_file_path, index = False, header=True)
     
-    return comparison
+    return comparison, basins
+
+
+
+
+def plot_basins_from_lat_long(basins_with_ppt, basin_name):
+    """ Plot the given basins """
+    basin_data = basins_with_ppt[basin_name]
+    
+    lat_point_list = basin_data["Latitude"]
+    lon_point_list = basin_data["Longitude"]
+
+
+    polygon_geom = Polygon(zip(lon_point_list, lat_point_list))
+
+    
+    crs = {'init': 'epsg:4326'}
+    m = folium.Map(zoom_start=10, tiles='cartodbpositron')
+
+    polygon = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[polygon_geom])       
+
+    folium.GeoJson(polygon).add_to(m)
+    folium.LatLngPopup().add_to(m)
+        
+    return m
+
 
 mopex_ppt_data = get_mopex_monthly_average()
 all_basin_geoms = get_all_basin_coords()
 all_basin_geoms = filter_basins_by_mopex(mopex_ppt_data, all_basin_geoms)
-calculate_for_years()
-
-def visualize_prism_data_by_grid_for_given_basin(target_basin_geom, year, month):
-    global gIndex
-    
-    ppt_bounds, ppt_data, hdr_dict = get_monthly_prism_ppt_data(year=year, month=month)
-    ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)
-    
-    intersected_basins = {}
-    print("Creating Spatial RTree Index for month:", month)
-    
-    # Create a copy of a global index to reduce time.
-    # Check if it works correctly.
-    
-    if(gIndex == 0):
-        spatial_index = ppt_gdf.sindex
-        gIndex = spatial_index
-    else:
-        spatial_index = gIndex
-        
-    print("Creating basin intersections")
-    for basin_file_name, basin_geom in all_basin_geoms.items():
-        possible_matches_index = list(spatial_index.intersection(basin_geom.bounds))
-        possible_matches = ppt_gdf.iloc[possible_matches_index]
-        precise_matches = possible_matches[possible_matches.intersects(basin_geom)]
-        
-        intersected_basins[basin_file_name] = precise_matches    
-    
-
-#plot_basins(all_basin_geoms)
+comparison, basins_with_ppt = calculate_for_years()
 
 
 
+basin_name = "01606500.BDY"
+
+plot_basins([all_basin_geoms[basin_name]])
+
+plot_basins_from_lat_long(basins_with_ppt, basin_name)
