@@ -231,7 +231,7 @@ def zip_calc_and_true(mopex_ppt_data, basins, month, year):
             true_ppt = np.nan
         temp["Year"] = year
         temp["Month"] = month
-        temp["Actual"] = true_ppt
+        temp["Mopex_Actual_in_CM"] = true_ppt
         trueVSCalc = trueVSCalc.append(temp, ignore_index=True)
         
     return trueVSCalc
@@ -270,14 +270,19 @@ def calculate_for_years():
 
 
 
-def plot_basins_from_lat_long(basins_with_ppt, basin_name):
-    """ Plot the given basins """
-    basin_data = basins_with_ppt[basin_name]
+def plot_basins_from_lat_long(basins_with_ppt, basin_name, all_basin_geoms, randomize = False):
+    """ Plot the given basins along with precipitation """
+    from folium.plugins import HeatMap
+    import random
     
+    if (not randomize):    
+        basin_data = basins_with_ppt[basin_name]
+    else:
+        basin_name = random.choice(list(all_basin_geoms.keys()))
+        basin_data = basins_with_ppt[basin_name]
+        
     lat_point_list = basin_data["Latitude"]
     lon_point_list = basin_data["Longitude"]
-
-
     polygon_geom = Polygon(zip(lon_point_list, lat_point_list))
 
     
@@ -285,12 +290,16 @@ def plot_basins_from_lat_long(basins_with_ppt, basin_name):
     m = folium.Map(zoom_start=10, tiles='cartodbpositron')
 
     polygon = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[polygon_geom])       
-
+#    folium.GeoJson(polygon).add_to(m)
+#    folium.LatLngPopup().add_to(m)
+    
+    HeatMap(data=basin_data[['Latitude', 'Longitude', 'Precipitation']].groupby(['Latitude', 'Longitude']).sum().reset_index().values.tolist(), radius=8, max_zoom=13).add_to(m)
+    
+    polygon = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[all_basin_geoms[basin_name]])
     folium.GeoJson(polygon).add_to(m)
     folium.LatLngPopup().add_to(m)
-        
+    
     return m
-
 
 mopex_ppt_data = get_mopex_monthly_average()
 all_basin_geoms = get_all_basin_coords()
@@ -299,8 +308,3 @@ comparison, basins_with_ppt = calculate_for_years()
 
 
 
-basin_name = "01606500.BDY"
-
-plot_basins([all_basin_geoms[basin_name]])
-
-plot_basins_from_lat_long(basins_with_ppt, basin_name)
