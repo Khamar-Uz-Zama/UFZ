@@ -1,13 +1,5 @@
-import geopandas as gpd
-import folium
+# 
 import pandas as pd
-import numpy as np
-
-from os import listdir
-from os.path import isfile, join
-from shapely.geometry import Polygon, Point
-
-import matplotlib.pyplot as plt
 import os
 
 root = "C://Users//user//Desktop//Helmholtz//Tasks//Task 2//"
@@ -20,11 +12,10 @@ def readBasins():
     
     return df
 
-
 df = readBasins()
 def readFromGHCND_SA():
     completeBasins = {}
-    completeBasinsCount = {} 
+    completeBasinsCount = {}
     unreadableFiles = []
     for index, row in df.iterrows():
         try:
@@ -34,8 +25,8 @@ def readFromGHCND_SA():
             basinHistory = pd.read_csv(os.path.join(root, ghcnd_Dir, basinName))     
             basinHistoryWOna = basinHistory.dropna(subset=['PRCP'])
             
-            if(basinHistoryWOna.shape[0] != basinHistory.shape[0]):
-                print("Sanity check")
+            #if(basinHistoryWOna.shape[0] != basinHistory.shape[0]):
+                #print()
             
             zz = basinHistoryWOna[["year","PRCP"]].groupby("year").count().reset_index()
             zz = zz.rename(columns = {"PRCP": "PRCP_days_Count"})
@@ -46,13 +37,18 @@ def readFromGHCND_SA():
             completeBasinsCount[basinName] = zzz.shape[0]
             
             if(zzz.shape[0] > 30):
-                completeBasins[basinName] = zzz  
+                completeBasins[basinName] = zzz
         except :
             unreadableFiles.append(basinName)
+            
+    return completeBasins
             
     print("Following files could not be read from GHCND_SA")
 
 def extactChile():
+    completeBasins = {}
+    completeBasinsCount = {}
+    
     fileName = "cr2_prDaily_2018.txt"
     df_chile = pd.read_csv(os.path.join(root, chile_Dir, fileName))
     
@@ -60,20 +56,56 @@ def extactChile():
         
     basinCodes = list(df_chile.columns.values)
     basinCodes = basinCodes[1:]
+    i = 0
     for basinColumn in basinCodes:
-        
-        zz = df_chile[['codigo_estacion',basinColumn]]
-        zz = zz[zz[basinColumn] != "-9999"]
-        zz = zz[zz[basinColumn] != -9999]
+        if(i%100 == 0):
+                print(i)
+        df_basin = df_chile[['codigo_estacion',basinColumn]]
+        df_basin = df_basin[df_basin[basinColumn] != "-9999"]
+        df_basin = df_basin[df_basin[basinColumn] != -9999]
         #zz = zz.dropna(subset=[basinColumn])
         
-        zz['codigo_estacion'] = pd.to_datetime(zz.codigo_estacion)
-        yy = zz.groupby([zz['codigo_estacion'].dt.year]).count()
-        yy = yy.rename(columns = {"codigo_estacion": "PRCP_days_Count"})
-        yy = yy.drop(columns=[basinColumn])
+        df_basin['codigo_estacion'] = pd.to_datetime(df_basin.codigo_estacion)
+        df_basin = df_basin.groupby([df_basin['codigo_estacion'].dt.year]).count()
+        df_basin = df_basin.rename(columns = {"codigo_estacion": "PRCP_days_Count"})
+        df_basin = df_basin.drop(columns=[basinColumn])
 
         # drop the basins with less than 330 count
-        yy =  yy.drop(yy[yy.PRCP_days_Count < 330].index)
+        df_basin =  df_basin.drop(df_basin[df_basin.PRCP_days_Count < 330].index)
+        completeBasinsCount[basinColumn] = df_basin.shape[0]
+        
+        # add the basins for more than 30 years
+        if(df_basin.shape[0] > 30):
+            completeBasins[basinColumn] = df_basin
+        i += 1
+        
+    return completeBasins
+    
+completeBasins_Chile = extactChile()
+completeBasins_GHCND_SA = readFromGHCND_SA()
 
+csvDF = pd.DataFrame(columns=["ID", "Source", "No Complete Years", "Start Year", "End Year"])
 
-extactChile()
+x = ["adsasd", "asdas", 23, 1234, 4322]
+
+for basinID, completeYears in completeBasins_Chile.items():
+    csvDict = {}
+    csvDict["ID"] = basinID
+    csvDict["Source"] = "Chile"
+    csvDict["No Complete Years"] = completeYears.shape[0]
+    csvDict["Start Year"] = completeYears.index[0]
+    csvDict["End Year"] = completeYears.index[-1]
+    csvDF = csvDF.append(csvDict, ignore_index = True)
+    
+    
+for basinID, completeYears in completeBasins_GHCND_SA.items():
+    csvDict = {}
+    csvDict["ID"] = basinID[:-4]
+    csvDict["Source"] = "GHCND_SA"
+    csvDict["No Complete Years"] = completeYears.shape[0]
+    csvDict["Start Year"] = completeYears["year"].min()
+    csvDict["End Year"] = completeYears["year"].max()
+    csvDF = csvDF.append(csvDict, ignore_index = True)
+    
+csvDF.to_csv(os.path.join(root,"Complete Basins.csv"), line_terminator = '\r')
+csvDF.to_csv()
