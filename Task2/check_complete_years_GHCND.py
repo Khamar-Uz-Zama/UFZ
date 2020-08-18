@@ -1,4 +1,6 @@
-# 
+# What is use of prcp dataset?
+# Calculated completeYears for all the basins in Chile dataset
+# Calculated completeYears for all the basins in  stat_SA dataset 
 import pandas as pd
 import os
 
@@ -14,6 +16,7 @@ def readBasins():
 
 df = readBasins()
 def readFromGHCND_SA():
+    # Calculate precipitation for the basins present in stat_SA from GHCNDA data
     completeBasins = {}
     completeBasinsCount = {}
     unreadableFiles = []
@@ -46,6 +49,7 @@ def readFromGHCND_SA():
     print("Following files could not be read from GHCND_SA")
 
 def extactChile():
+    # Calculate ppt for basins present chile dataset
     completeBasins = {}
     completeBasinsCount = {}
     
@@ -85,8 +89,6 @@ completeBasins_Chile = extactChile()
 completeBasins_GHCND_SA = readFromGHCND_SA()
 
 csvDF = pd.DataFrame(columns=["ID", "Source", "No Complete Years", "Start Year", "End Year"])
-
-x = ["adsasd", "asdas", 23, 1234, 4322]
 
 for basinID, completeYears in completeBasins_Chile.items():
     csvDict = {}
