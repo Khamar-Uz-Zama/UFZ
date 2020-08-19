@@ -22,14 +22,25 @@ def getNOAAFileNames():
     return noaa_file_names
 
 
-def getNOAAData(fileName, returnGDF):
-    crs = {'init': 'epsg:4326'}
+def getNOAAData(month, year, returnGDF):
+    
+    
+    if(month<10):
+        fileName = "prcp-"+str(year)+"0"+str(month)+"-grd-scaled.nc"
+    else:
+        fileName = "prcp-"+str(year)+str(month)+"-grd-scaled.nc"
+    
+    if(fileName not in noaa_file_names):
+        print("Data not found for given month and year in NOAA dataset")
+        
     dnc = xr.open_dataset(join(root, noaa_dir, fileName))  
     df = dnc.to_dataframe()
     df = df.reset_index()
     
     df = df.groupby(['lat', 'lon']).agg({'prcp': [np.nanmean]}).reset_index()
+    
     if(returnGDF):
+        crs = {'init': 'epsg:4326'}
         gdf = gpd.GeoDataFrame(df, crs = crs, geometry=gpd.points_from_xy(df.lon, df.lat))
         return gdf
     else:
@@ -41,8 +52,8 @@ def plotNOAADataset(df):
     m = folium.Map(zoom_start=10, tiles='cartodbpositron')
     
     HeatMap(data=df[['lat', 'lon', 'prcp']].groupby(['lat', 'lon']).sum().reset_index().values.tolist(), radius=8, max_zoom=13).add_to(m)
-    m.save("NOAA bounds.html")
+    m.save("NOAA Heatmap.html")
     
 noaa_file_names = getNOAAFileNames()
-noaaDF = getNOAAData(noaa_file_names[0], returnGDF = False)
-plotNOAADataset(noaaDF)
+#noaaDF = getNOAAData(noaa_file_names[0], returnGDF = False)
+#plotNOAADataset(noaaDF)
