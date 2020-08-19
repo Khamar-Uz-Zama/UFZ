@@ -54,6 +54,6 @@ def plotNOAADataset(df):
     HeatMap(data=df[['lat', 'lon', 'prcp']].groupby(['lat', 'lon']).sum().reset_index().values.tolist(), radius=8, max_zoom=13).add_to(m)
     m.save("NOAA Heatmap.html")
     
-noaa_file_names = getNOAAFileNames()
-#noaaDF = getNOAAData(noaa_file_names[0], returnGDF = False)
+#noaa_file_names = getNOAAFileNames()
+#noaaDF = getNOAAData(month=1, year=1987,  returnGDF = False)
 #plotNOAADataset(noaaDF)

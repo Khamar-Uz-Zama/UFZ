@@ -102,14 +102,14 @@ def get_monthly_prism_ppt_data(year,month, plotPPTBounds):
     p1 = (hdr_dict["ULXMAP"] - (hdr_dict['XDIM']/2), 
           hdr_dict["ULYMAP"] + (hdr_dict['YDIM']/2))
 
-    p2 = (hdr_dict["ULXMAP"] + (hdr_dict['NCOLS']*hdr_dict['XDIM']),
-          hdr_dict["ULYMAP"] + (hdr_dict['XDIM']/2))
+    p2 = (p1[0] + (hdr_dict['NCOLS']*hdr_dict['XDIM']),
+          p1[1])
 
-    p3 = (hdr_dict["ULXMAP"] + (hdr_dict['NCOLS']*hdr_dict['XDIM']),
-          hdr_dict["ULYMAP"] - (hdr_dict['NROWS']*hdr_dict['YDIM']))
+    p3 = (p2[0],
+          p2[1] - (hdr_dict['NROWS']*hdr_dict['YDIM']))
 
-    p4 = (hdr_dict["ULXMAP"] - (hdr_dict['XDIM']/2),
-          hdr_dict["ULYMAP"] - hdr_dict['NROWS']*hdr_dict['YDIM'])
+    p4 = (p1[0],
+          p3[1])
     
     lon_point_list = (p1[0], p2[0], p3[0], p4[0])
     lat_point_list = (p1[1], p2[1], p3[1], p4[1])
@@ -123,12 +123,12 @@ def get_monthly_prism_ppt_data(year,month, plotPPTBounds):
     
         folium.GeoJson(polygon).add_to(m)
         folium.LatLngPopup().add_to(m)
-        m.save("Prism data")
+        m.save("Prism data.html")
 
     return ppt_bounds, ppt_data, hdr_dict
 
 
-def convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict):
+def convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict, plotHeatMap):
     """ Convert precipitation data to Geo DataFrame """
     Xmin, Ymin, Xmax, Ymax = ppt_bounds.bounds
     
@@ -144,9 +144,14 @@ def convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict):
         {'Precipitation': ppt_data,
          'Latitude': yc,
          'Longitude': xc})
-        
+    #crs = {'init': 'epsg:4326'}
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
-
+    
+    if(plotHeatMap):
+        from folium.plugins import HeatMap
+        m = folium.Map(zoom_start=10, tiles='cartodbpositron')
+        HeatMap(data=df[['Latitude', 'Longitude', 'Precipitation']].groupby(['Latitude', 'Longitude']).sum().reset_index().values.tolist(), radius=8, max_zoom=13).add_to(m)
+        m.save("Prism Data.html")
     return gdf
 
 def get_intersected_basins(all_basin_geoms , month, year):
