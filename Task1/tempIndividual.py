@@ -16,9 +16,10 @@ gIndex = 0
 def get_all_basin_coords():
     """
     Retrieve basin coordinates and their names
-        Two options for reading boundaries:
+        Three options for reading boundaries:
         1. Read all the basins in Basin_Boundaries
         2. Read only the basins that are present in Mopex dataset
+        3. Read only the basins given in documentation
         
     """
         
@@ -314,7 +315,7 @@ def plot_basins_from_lat_long(basins_with_ppt, basin_name, all_basin_geoms, rand
     crs = {'init': 'epsg:4326'}
     m = folium.Map(zoom_start=100, tiles='cartodbpositron')
 
-    polygon = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[polygon_geom])       
+#    polygon = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[polygon_geom])       
 #    folium.GeoJson(polygon).add_to(m)
 #    folium.LatLngPopup().add_to(m)
     
@@ -324,6 +325,7 @@ def plot_basins_from_lat_long(basins_with_ppt, basin_name, all_basin_geoms, rand
     folium.GeoJson(polygon).add_to(m)
     folium.LatLngPopup().add_to(m)
     m.fit_bounds(polygon_geom.bounds)
+    
     return m
 
 
