@@ -123,7 +123,7 @@ def get_monthly_prism_ppt_data(year,month, plotPPTBounds):
     
         folium.GeoJson(polygon).add_to(m)
         folium.LatLngPopup().add_to(m)
-        m.save("Prism data.html")
+        m.save("Prism Bounds.html")
 
     return ppt_bounds, ppt_data, hdr_dict
 
@@ -135,31 +135,36 @@ def convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict, plotHeatMap):
     Xlength = int((Xmax - Xmin)/hdr_dict['XDIM'])
     Ylength = int((Ymax - Ymin)/hdr_dict['YDIM'])
     
-    xx, yy = np.meshgrid(np.linspace(Xmin, Xmax, Xlength), np.linspace(Ymin, Ymax, Ylength))
+    xx, yy = np.meshgrid(np.linspace(Xmin, Xmax, Xlength), np.linspace(Ymax, Ymin, Ylength))
     xc = xx.flatten()
     yc = yy.flatten()
     ppt_data = ppt_data.flatten()
-    
+
     df = pd.DataFrame(
         {'Precipitation': ppt_data,
          'Latitude': yc,
          'Longitude': xc})
-    #crs = {'init': 'epsg:4326'}
-    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
     
     if(plotHeatMap):
+        
         from folium.plugins import HeatMap
         m = folium.Map(zoom_start=10, tiles='cartodbpositron')
         HeatMap(data=df[['Latitude', 'Longitude', 'Precipitation']].groupby(['Latitude', 'Longitude']).sum().reset_index().values.tolist(), radius=8, max_zoom=13).add_to(m)
-        m.save("Prism Data.html")
+        folium.LatLngPopup().add_to(m)
+
+        m.save("Prism Heatmap.html")
+
+    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
+        
     return gdf
 
-def get_intersected_basins(all_basin_geoms , month, year):
+def get_intersected_basins_ppt_data(all_basin_geoms , month, year, conv2Inches):
     """ Return the precipitation data for basins that intersect with prism grid """
     
     global gSpatialIndex
-    ppt_bounds, ppt_data, hdr_dict = get_monthly_prism_ppt_data(year=year, month=month, plotPPTBounds = True)
-    ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)
+    
+    ppt_bounds, ppt_data, hdr_dict = get_monthly_prism_ppt_data(year = year, month = month, plotPPTBounds = False)
+    ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict, plotHeatMap = False)
 
     intersected_basins = {}
     print("Creating Spatial RTree Index for month:", month)
@@ -175,7 +180,8 @@ def get_intersected_basins(all_basin_geoms , month, year):
         possible_matches_index = list(gSpatialIndex.intersection(basin_geom.bounds))
         possible_matches = ppt_gdf.iloc[possible_matches_index]
         precise_matches = possible_matches[possible_matches.intersects(basin_geom)]
-        
+        if(conv2Inches):
+            print("")
         intersected_basins[basin_file_name] = precise_matches
 
     return intersected_basins
