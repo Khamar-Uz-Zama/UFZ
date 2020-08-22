@@ -40,7 +40,8 @@ def getNOAAData(month, year, returnGDF):
     df = df.reset_index()
     
     df = df.groupby(['lat', 'lon']).agg({'prcp': [np.nanmean]}).reset_index()
-    df = df.rename(columns={'prcp.nanmean': 'prcp'})
+    #df = df.rename(columns={'prcp.nanmean': 'prcp'})
+    df.columns = ['lat', 'lon', 'prcp']
 
     if(returnGDF):
         crs = {'init': 'epsg:4326'}

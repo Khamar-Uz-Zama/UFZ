@@ -9,53 +9,11 @@ import folium
 import pandas as pd
 import numpy as np
 
-from os import listdir
-from os.path import isfile, join
+from os.path import join
 from shapely.geometry import Polygon
-
-import matplotlib.pyplot as plt
-import os
 
 root = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//"
 gSpatialIndex = 0
-
-def get_all_basin_coords():
-    """
-    Retrieve basin coordinates and their names
-        Three options for reading boundaries:
-        1. Read all the basins in Basin_Boundaries
-        2. Read only the basins that are present in Mopex dataset
-        3. Read only the basins given in documentation
-        
-    """
-        
-    basins_dir = "Basin_Boundaries//"
-    mopex_dir = "MOPEX//"
-    
-    # Read basins from Basin_Boundaries directory
-    #basin_file_names = [f for f in listdir(join(root, basins_dir)) if isfile(join(root, basins_dir, f))]
-    
-    #Read basins present in Mopex dataset
-    basin_file_names = [f.replace('.txt', '.BDY') for f in listdir(join(root, mopex_dir)) if isfile(join(root, mopex_dir, f))]
-    basin_file_names = basin_file_names[:-2]
-    
-    # Preliminary basins prescribed in documentation
-    # basin_file_names = ["11501000.BDY", "12098500.BDY", "08032000.BDY", "11025500.BDY", "03448000.BDY", "01372500.BDY", "05471500.BDY"]
-    all_basin_geoms = []
-    print("Reading basin coordinates")
-    for file_name in basin_file_names[:]:
-        lat_point_list = []
-        lon_point_list = []
-        df = pd.read_csv(join(root, basins_dir, file_name), delim_whitespace=True, header=None, skiprows=1)
-        lat_point_list = df[1]
-        lon_point_list = df[0]
-    
-        polygon_geom = Polygon(zip(lon_point_list, lat_point_list))
-        all_basin_geoms.append(polygon_geom)
-        
-    print("Completed reading basins coordinates")
-
-    return dict(zip(basin_file_names, all_basin_geoms))
 
 def read_prism_hdr(hdr_path):
     """ Read an ESRI BIL HDR file
@@ -181,7 +139,7 @@ def get_intersected_basins_ppt_data(all_basin_geoms , month, year, conv2Inches):
         possible_matches = ppt_gdf.iloc[possible_matches_index]
         precise_matches = possible_matches[possible_matches.intersects(basin_geom)]
         if(conv2Inches):
-            print("")
+            precise_matches["Precipitation"] = precise_matches["Precipitation"]/25.4
         intersected_basins[basin_file_name] = precise_matches
 
     return intersected_basins
