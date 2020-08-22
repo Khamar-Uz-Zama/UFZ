@@ -93,11 +93,13 @@ def zipAllThree(noaa_basin_ppt_data, prism_basin_ppt_data, mopex_ppt_data, month
         temp.append(prismDF['Precipitation'].mean())
         basin = basin.replace(".BDY",".txt")
         mopexDF = mopex_ppt_data[basin]
+        mopexDF = mopexDF[(mopexDF.index.month == month)]
+        mopexDF = mopexDF[(mopexDF.index.year == year)]
+        
         if(mopexDF.shape[0] != 1):
+            # -1 Indicates that for this month,year and this basin the data is not available
             mopexPPT = -1
         else:
-            mopexDF = mopexDF[(mopexDF.index.month == month)]
-            mopexDF = mopexDF[(mopexDF.index.year == year)]
             mopexPPT = mopexDF["precipitation"][0]
         temp.append(mopexPPT)
         

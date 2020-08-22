@@ -29,7 +29,7 @@ def get_mopex_monthly_average():
         mopex_df.set_index('date', inplace=True)
         
         # The mean excludes the nan rows
-        # If there is one row with Nan for a given month, then only that row is removed.
+        # If there is any row with Nan for a given month, then only that row is removed.
         monthly_average = mopex_df.resample('1M').mean()
         mopex_data[file_name] = monthly_average
         
