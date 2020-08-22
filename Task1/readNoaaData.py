@@ -62,15 +62,13 @@ def get_intersected_basins_ppt_data(all_basin_geoms , month, year):
     """ Return the precipitation data for basins that intersect with prism grid """
     
     global gSpatialIndex
-    
-    #ppt_bounds, ppt_data, hdr_dict = get_monthly_prism_ppt_data(year = year, month = month, plotPPTBounds = False)
-    #ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict, plotHeatMap = False)
-    ppt_gdf = getNOAAData(month=month, year=year,  returnGDF = True)
+    print("Processing NOAA Dataset")
+    print("-Extracting precipitation data")
 
-    
+    ppt_gdf = getNOAAData(month=month, year=year,  returnGDF = True)  
     
     intersected_basins = {}
-    print("Creating Spatial RTree Index for month:", month)
+    print("--Creating Spatial RTree Index for month:", month)
     
     # Create a copy of a global index to reduce time.
     # Check if it works correctly.
@@ -78,14 +76,15 @@ def get_intersected_basins_ppt_data(all_basin_geoms , month, year):
     if(gSpatialIndex == 0):
         gSpatialIndex = ppt_gdf.sindex
 
-    print("Creating basin intersections")
+    print("-Creating basin intersections")
     for basin_file_name, basin_geom in all_basin_geoms.items():
         possible_matches_index = list(gSpatialIndex.intersection(basin_geom.bounds))
         possible_matches = ppt_gdf.iloc[possible_matches_index]
         precise_matches = possible_matches[possible_matches.intersects(basin_geom)]
         
         intersected_basins[basin_file_name] = precise_matches
-
+        
+    print("Completed processing")
     return intersected_basins
 
 

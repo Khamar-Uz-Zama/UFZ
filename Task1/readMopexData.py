@@ -21,6 +21,7 @@ def get_mopex_monthly_average():
 
     mopex_data = {}
     print("Reading mopex data")
+    print("-Calculating monthly average")
     for count, file_name in enumerate(mopex_file_names):
         mopex_df = pd.read_csv(os.path.join(mopex_dir, file_name))
         mopex_df = mopex_df[["precipitation", "month", "year", "date"]]

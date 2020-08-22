@@ -7,6 +7,8 @@ Created on Thu Aug 20 16:43:19 2020
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+
 from os import listdir
 from os.path import isfile, join
 from shapely.geometry import Polygon
@@ -82,6 +84,7 @@ def get_all_basin_coords(mopexOnly = False):
     return dict(zip(basin_file_names, all_basin_geoms))
 
 def zipAllThree(noaa_basin_ppt_data, prism_basin_ppt_data, mopex_ppt_data, month, year):
+    print("Summarizing data")
     df = pd.DataFrame(columns=['Basin','Noaa' ,'Prism' , 'Mopex'])
     i=0
     for basin, noaaDF in noaa_basin_ppt_data.items():
@@ -110,7 +113,7 @@ def zipAllThree(noaa_basin_ppt_data, prism_basin_ppt_data, mopex_ppt_data, month
 
 def plotAllThree(allThree_df, mm, yy):
     
-    import matplotlib.pyplot as plt
+    print("Visualizing results")
     
     fig, ax = plt.subplots()
     
@@ -125,5 +128,17 @@ def plotAllThree(allThree_df, mm, yy):
     ax.title.set_text(title)
     
     ax.legend()
-    
+    print("Visualizing complete")
     plt.show()
+    
+def plotRandom(ppt_cumulative):
+
+    import random
+    
+    my = random.choice(list(ppt_cumulative.keys()))
+    
+    month = int(my[:2])
+    year = int(my[2:])
+    
+    plotAllThree(ppt_cumulative[my], month, year)
+    
