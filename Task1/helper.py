@@ -131,14 +131,60 @@ def plotAllThree(allThree_df, mm, yy):
     print("Visualizing complete")
     plt.show()
     
-def plotRandom(ppt_cumulative):
+def plotRandom(ppt_cumulative, returnRandom):
 
     import random
     
     my = random.choice(list(ppt_cumulative.keys()))
     
     month = int(my[:2])
-    year = int(my[2:])
+    year = int(my[3:])
     
     plotAllThree(ppt_cumulative[my], month, year)
     
+    if(returnRandom):
+        return ppt_cumulative[my], month, year
+    else:
+        return None
+
+def plot_ppt_Metrics(cumulative_cor, cumulative_mse, cumulative_mae):
+
+    print("Visualizing results")
+    
+    fig, ax = plt.subplots()
+    
+    ax.plot(cumulative_cor.keys(), cumulative_cor.values(), label="Correlation")
+    ax.plot(cumulative_mse.keys(), cumulative_mse.values(), label="MSE")
+    ax.plot(cumulative_mae.keys(), cumulative_mae.values(),  label="MAE")
+    
+    # Remove labels
+    ax.set_xticklabels([])
+    
+    title = 'Precipitation Metrics'
+    ax.title.set_text(title)
+    
+    ax.legend()
+    print("Visualizing complete")
+    plt.show()
+    
+    
+def calculateMetrics(ppt_cumulative, plotMetrics):
+    from sklearn.metrics import mean_absolute_error, mean_squared_error
+    from scipy.stats.stats import pearsonr   
+    
+    cumulative_cor = {}
+    cumulative_mse = {}
+    cumulative_mae = {}
+    i = 0
+    for key, ppt_data in ppt_cumulative.items(): 
+        cumulative_cor[key] = pearsonr(ppt_data['Noaa'], ppt_data['Prism'])[0]
+        cumulative_mae[key] = mean_absolute_error(ppt_data['Noaa'], ppt_data['Prism'])
+        cumulative_mse[key] = mean_squared_error(ppt_data['Noaa'], ppt_data['Prism'])
+        if(i%10 == 0):
+            print(i)
+        i += 1
+    
+    if(plotMetrics):
+        plot_ppt_Metrics(cumulative_cor, cumulative_mse, cumulative_mae)
+    return cumulative_cor, cumulative_mse, cumulative_mae
+
