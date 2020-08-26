@@ -8,11 +8,11 @@ import geopandas as gpd
 import folium
 import pandas as pd
 import numpy as np
+import config as cf
 
 from os.path import join
 from shapely.geometry import Polygon
 
-root = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//"
 gSpatialIndex = 0
 
 def read_prism_hdr(hdr_path):
@@ -38,17 +38,15 @@ def read_prism_bil(bil_path):
 def get_monthly_prism_ppt_data(year,month, plotPPTBounds):
     """ Get precipitation data for given mm, YY from PRISM data"""
     """ It is in the form of grid """
-    
-    prism_dir = "PRISM_ppt_stable_4kmM3_198101_202001_bil//"
-    
+        
     if(month<10):
         prism_file_path = "PRISM_ppt_stable_4kmM3_"+str(year)+"0"+str(month)+"_bil.bil"
     else:
         prism_file_path = "PRISM_ppt_stable_4kmM3_"+str(year)+str(month)+"_bil.bil" 
         
-    ppt_data = read_prism_bil(join(root, prism_dir, prism_file_path))
+    ppt_data = read_prism_bil(join(cf.root, cf.prism_dir, prism_file_path))
     
-    hdr_dict = read_prism_hdr(join(root, prism_dir, prism_file_path).replace('.bil', '.hdr'))
+    hdr_dict = read_prism_hdr(join(cf.root, cf.prism_dir, prism_file_path).replace('.bil', '.hdr'))
     
     hdr_dict["ULXMAP"] = float(hdr_dict["ULXMAP"])
     hdr_dict["ULYMAP"] = float(hdr_dict["ULYMAP"])
@@ -146,6 +144,25 @@ def get_intersected_basins_ppt_data(all_basin_geoms , month, year, conv2Inches):
     print("Completed processing ")
     return intersected_basins
  
+def getYearlyPrism(all_basin_geoms, fromYear, toYear):
+    """
+    Calculates Mopex data for the given years for all the months
+    """
+    
+    yearly_Prism = {}
+    for yy in range(fromYear, toYear):
+        print("Processing year", yy)
+        for mm in range(1, 3):
+            print("Processing month", mm)            
+            if(mm<10):
+                mmyy = '0'+str(mm)+'-'+str(yy)
+            else:
+                mmyy = str(mm)+'-'+str(yy)
+            print(mmyy)
+            yearly_Prism[mmyy] = get_intersected_basins_ppt_data(all_basin_geoms, month=mm, year=yy)
+    
+    return yearly_Prism    
+
 #all_basin_geoms = get_all_basin_coords()
 #ppt_bounds, ppt_data, hdr_dict = get_monthly_prism_ppt_data(year=1987,month=1, plotPPTBounds=True)
 #ppt_gdf = convert_pptData_to_GDF(ppt_bounds, ppt_data, hdr_dict)

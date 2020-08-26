@@ -5,20 +5,21 @@ Created on Wed Aug 19 02:28:35 2020
 @author: Khamar Uz Zama
 """
 
-from os.path import isfile, join
-from os import listdir
 import numpy as np
 import xarray as xr
 import geopandas as gpd
 import folium
+import config as cf
+
+from os.path import isfile, join
+from os import listdir
 from folium.plugins import HeatMap
 
-root = "C://Users//user//Desktop//Helmholtz//Tasks//Task 1//"
-noaa_dir = "NOAA dataset"
+
 gSpatialIndex = 0
 
 def getNOAAFileNames():    
-    noaa_file_names = [f for f in listdir(join(root, noaa_dir)) if isfile(join(root, noaa_dir, f))]
+    noaa_file_names = [f for f in listdir(join(cf.root, cf.noaa_dir)) if isfile(join(cf.root, cf.noaa_dir, f))]
     
     return noaa_file_names
 
@@ -34,13 +35,14 @@ def getNOAAData(month, year, returnGDF):
     
     if(fileName not in noaa_file_names):
         print("Data not found for given month and year in NOAA dataset")
+        print("month=", month)
+        print("year=", year)
         return None
-    dnc = xr.open_dataset(join(root, noaa_dir, fileName))  
+    dnc = xr.open_dataset(join(cf.root, cf.noaa_dir, fileName))  
     df = dnc.to_dataframe()
     df = df.reset_index()
     
     df = df.groupby(['lat', 'lon']).agg({'prcp': [np.nanmean]}).reset_index()
-    #df = df.rename(columns={'prcp.nanmean': 'prcp'})
     df.columns = ['lat', 'lon', 'prcp']
 
     if(returnGDF):
@@ -88,7 +90,24 @@ def get_intersected_basins_ppt_data(all_basin_geoms , month, year):
     return intersected_basins
 
 
+def getYearlyNoaa(all_basin_geoms, fromYear, toYear):
+    """
+    Calculates Noaa data for the given years for all the months
+    """
     
+    yearly_NOAA = {}
+    for yy in range(fromYear, toYear):
+        print("Processing year", yy)
+        for mm in range(1, 3):
+            print("Processing month", mm)            
+            if(mm<10):
+                mmyy = '0'+str(mm)+'-'+str(yy)
+            else:
+                mmyy = str(mm)+'-'+str(yy)
+            print(mmyy)
+            yearly_NOAA[mmyy] = get_intersected_basins_ppt_data(all_basin_geoms, month=mm, year=yy)
+    
+    return yearly_NOAA
 #noaa_file_names = getNOAAFileNames()
 #noaaDF = getNOAAData(month=1, year=1987,  returnGDF = False)
 #plotNOAADataset(noaaDF)
