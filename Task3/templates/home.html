@@ -1,0 +1,54 @@
+{% extends 'layout.html' %}
+{% block body %}
+
+<div class="jumbotron text-Left">
+
+<div class="container">
+
+  <div class="row">
+    <h2> xx Title  xx</h2>  
+    <div class="col">
+      <form action="/" method="POST" enctype="multipart/form-data">
+
+          <div class="custom-control custom-radio">
+            <label>Parameter 1</label>
+            </br>
+            <input type="radio" class="custom-control-input" id="prcp-radio-btn" name="dataType" value="precipitation" checked="">
+            <label class="custom-control-label" for="prcp-radio-btn">Precipitation</label>
+            </br>
+            <input type="radio" class="custom-control-input" id="flood-radio-btn" name="dataType" value="flood">
+            <label class="custom-control-label" for="flood-radio-btn">Flood</label>
+          </div>
+
+        </br>
+        <div class="form-group">
+            <label>Select Input data</label>
+            <input type="file" class="custom-file-input" id="customFile" name="inputData">
+        </div>
+
+        <div class="form-group">
+            <label>Return Period (in Years)</label>
+            </br>
+            <input type="number" id="returnPeriod" name="Return Period" min="1" max="1000">
+        </div>
+        
+        <div class="form-group">
+            <label>Parameter 2</label>
+            </br>
+            <select name="param1" class="custom-select">
+                <option value="MeV">MeV</option>
+                <option value="GeV">GeV</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Visualize Input</button>
+
+      </form>
+
+    </div>
+  </div>
+</div>
+  </div>
+
+
+{% endblock %}
