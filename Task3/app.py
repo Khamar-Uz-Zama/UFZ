@@ -1,13 +1,17 @@
 from flask import Flask, render_template, flash, redirect, url_for, session, request, logging
-#from data import Articles
 from flask_mysqldb import MySQL
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
 from functools import wraps
 import os
 import pandas as pd
-import csv
 import io
+
+#from charts.bar_chart import plot_chart
+import plotly.graph_objs as go
+import plotly.offline as plt
+import plotly
+import json
 
 app = Flask(__name__)
 
@@ -35,7 +39,9 @@ def index():
             inputFile = request.files["inputData"]
             stream = io.StringIO(inputFile.stream.read().decode("UTF8"), newline=None)
             df = pd.read_csv(stream)
-            print(req)
+#            df = df.drop([0])
+            df.to_csv(os.path.join("temp","inputData.csv"), index=False)
+#            print(df.head())
             return render_template('visualizeInput.html', params = req, inputData = df)
     
     return render_template('home.html')
@@ -46,10 +52,20 @@ def index():
 def visualizeInput():
     return render_template('visualizeInput.html')
 
-@app.route('/processInput', methods=["GET", "POST"])
-def processInput():
+@app.route('/plotCalculations', methods=["GET", "POST"])
+def plotCalculations():
     #flash('You are now logged out', 'success')
-    return redirect(url_for('login'))
+    df = pd.read_csv(os.path.join("temp", "inputData.csv"))
+#    print(df.head())
+        
+    trace1 = go.Bar(x=df["Country"][0:20], y=df["GDP ($ per capita)"])
+    layout = go.Layout(title="GDP of the Country", xaxis=dict(title="Country"),
+                       yaxis=dict(title="GDP Per Capita"), )
+    data = [trace1]
+    fig = go.Figure(data=data, layout=layout)
+    fig_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    
+    return render_template('plotCalculations.html', plot=fig_json)
     
 # About
 @app.route('/about')
