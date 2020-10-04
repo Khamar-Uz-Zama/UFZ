@@ -173,18 +173,6 @@ def get_plotly_charts(ffc_obs, ffc_est, T_target, which = 'Streamflow', um = 'm$
     
     return fig_json
 
-#    plt.semilogx(T_emp, ffc_obs, 'o', color = 'gray', markeredgecolor = 'k', markeredgewidth = 0.5, label = 'OBSERVED FFC')
-#    plt.semilogx(T_target, ffc_est, '-r', lw = 1, label = 'GEV FFC')
-#
-#    plt.legend()
-    
-#maxima, gev_ffc, T_target = get_gev_params(data)
-#plot_ffc(maxima, gev_ffc, T_target, 'Streamflow', 'm$^3$/s')
-#
-#
-#
-#output = convt_to_df(T_target, gev_ffc)
-
 ##for example
 #maxima = extract_max(data)
 #T_emp = p_to_T(plotting_position(maxima))

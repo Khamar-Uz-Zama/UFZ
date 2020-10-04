@@ -13,29 +13,29 @@
           <div class="custom-control custom-radio">
             <label>Parameter 1</label>
             </br>
-            <input type="radio" class="custom-control-input" id="prcp-radio-btn" name="dataType" value="precipitation" checked="">
+            <input type="radio" class="custom-control-input" id="prcp-radio-btn" name="param1" value="precipitation" checked="">
             <label class="custom-control-label" for="prcp-radio-btn">Precipitation</label>
             </br>
-            <input type="radio" class="custom-control-input" id="flood-radio-btn" name="dataType" value="flood">
+            <input type="radio" class="custom-control-input" id="flood-radio-btn" name="param1" value="flood">
             <label class="custom-control-label" for="flood-radio-btn">Flood</label>
           </div>
 
         </br>
         <div class="form-group">
             <label>Select Input data</label>
-            <input type="file" class="custom-file-input" id="customFile" name="inputData">
+            <input type="file" class="custom-file-input" id="customFile" name="inputData" required>
         </div>
 
         <div class="form-group">
             <label>Return Period (in Years)</label>
             </br>
-            <input type="number" id="returnPeriod" name="Return Period" min="1" max="1000">
+            <input type="number" id="returnPeriod" name="return_Period" min="1" max="1000" required>
         </div>
         
         <div class="form-group">
             <label>Parameter 2</label>
             </br>
-            <select name="param1" class="custom-select">
+            <select name="param1" class="custom-select" name="param2">
                 <option value="MeV">MeV</option>
                 <option value="GeV">GeV</option>
             </select>
@@ -49,7 +49,7 @@
     </div>
   </div>
 </div>
-  </div>
+</div>
 
 
 {% endblock %}
