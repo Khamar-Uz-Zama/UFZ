@@ -6,6 +6,7 @@ from functools import wraps
 import os
 import pandas as pd
 import io
+import gev_func
 
 #from charts.bar_chart import plot_chart
 import plotly.graph_objs as go
@@ -34,15 +35,15 @@ def index():
         
         #username = req.get("username")
         
-        print(request.files)
+        xx = request.files["inputData"]
+        print(xx)
+        
         if(request.files):
             inputFile = request.files["inputData"]
             stream = io.StringIO(inputFile.stream.read().decode("UTF8"), newline=None)
             df = pd.read_csv(stream)
-#            df = df.drop([0])
             df.to_csv(os.path.join("temp","inputData.csv"), index=False)
-#            print(df.head())
-            return render_template('visualizeInput.html', params = req, inputData = df)
+            return render_template('visualizeInput.html', params = req, inputData = df, sampleData = df[:100])
     
     return render_template('home.html')
 
@@ -54,16 +55,11 @@ def visualizeInput():
 
 @app.route('/plotCalculations', methods=["GET", "POST"])
 def plotCalculations():
-    #flash('You are now logged out', 'success')
+#    flash('You are now logged out', 'success')
+    
     df = pd.read_csv(os.path.join("temp", "inputData.csv"))
-#    print(df.head())
-        
-    trace1 = go.Bar(x=df["Country"][0:20], y=df["GDP ($ per capita)"])
-    layout = go.Layout(title="GDP of the Country", xaxis=dict(title="Country"),
-                       yaxis=dict(title="GDP Per Capita"), )
-    data = [trace1]
-    fig = go.Figure(data=data, layout=layout)
-    fig_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    maxima, gev_ffc, T_target = gev_func.get_gev_params(data=df)
+    fig_json = gev_func.get_plotly_charts(maxima, gev_ffc, T_target)
     
     return render_template('plotCalculations.html', plot=fig_json)
     
